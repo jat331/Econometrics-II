@@ -1,0 +1,524 @@
+---
+title: "Final Exa"
+output:
+  html_document: default
+  pdf_document: default
+date: "2024-04-17"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#install.packages("rmarkdown")
+```
+
+#Question 1
+#1.1
+```{r}
+# Define the function f(x)
+f <- function(x) {
+  term1 <- 1 + exp((x - 1)^2 / 100)
+  term2 <- sum(1 /(1:5) * exp(cos(1:5 * x)) / (exp(cos(1:5 * x)) + 1))
+  return(term1 + term2)
+}
+
+# Calculate f(x) when x = 0 and x = 5
+f_x_0 <- f(0)
+f_x_5 <- f(5)
+cat("f(x) when x = 0:", f_x_0, "\n")
+cat("f(x) when x = 5:", f_x_5, "\n")
+```
+
+#1.2
+```{r}
+# Plot the function on the interval [-10, 10]
+x <- seq(-10, 10, by = 0.1)
+y <- sapply(x, f)
+plot(x, y, type = "l", main = "Plot of f(x)", xlab = "x", ylab = "f(x)")
+```
+#1.3
+
+```{r}
+# Define a better numerical derivative function
+c.num.deriv <- function(f, x, eps ) {
+    (f(x+eps)-f(x-eps))/(2*eps)
+}
+
+# Find the derivative of the function f(x) at x = -3
+derivative_at_minus_3 <- c.num.deriv(f, x = -3, eps = 0.0001)
+cat("Derivative of f(x) at x = -3:", derivative_at_minus_3, "\n")
+```
+
+#1.4
+```{r}
+# Load the rootSolve package
+library(rootSolve)
+
+# Define the function f(x)
+f <- function(x) {
+  term1 <- 1 + exp((x - 1)^2 / 100)
+  term2 <- sum(1 /(1:5) * exp(cos(1:5 * x)) / (exp(cos(1:5 * x)) + 1))
+  return(term1 + term2)
+}
+
+# Define a function for f(x) - 3.3
+f_minus_3.3 <- function(x) {
+  f(x) - 3.3
+}
+
+# Find all solutions to the equation f(x) = 3.3
+roots <- uniroot.all(f_minus_3.3, interval = c(-10, 10))
+
+# Plot the function on the interval [-10, 10]
+x <- seq(-10, 10, by = 0.1)
+y <- sapply(x, f)
+plot(x, y, type = "l", main = "Plot of f(x) and Solutions to f(x) = 3.3", xlab = "x", ylab = "f(x)")
+
+# Plot the solutions on the graph
+points(roots, rep(3.3, length(roots)), col = "red", pch = 19)
+
+# Plot the line y = 3.3
+abline(h = 3.3, col = "blue")
+
+# Find the intersection points
+intersection_points <- x[which(diff(sign(y - 3.3)) != 0)]
+
+# Plot x's at the intersection points
+points(intersection_points, rep(3.3, length(intersection_points)), col = "green", pch = "x")
+
+# Print the x values at the intersection points
+cat("x values at the intersection points:", intersection_points, "\n")
+```
+
+
+
+#1.5
+```{r}
+# Find the global minimizer x⋆ of the function f(x)
+library(stats)
+x_minimizer <- optimize(f, interval = c(-10, 10))$minimum
+cat("Global minimizer of f(x):", x_minimizer, "\n")
+
+# Plotting the function and global minimizer
+x <- seq(-10, 10, by = 0.1)
+y <- sapply(x, f)
+plot(x, y, type = "l", main = "Plot of f(x)", xlab = "x", ylab = "f(x)") + abline(h = 2.078263, col = "red", lty = 2)
+```
+
+```{r}
+# Load the data
+load("exam_data_James (1).rdata")
+```
+
+#Question 2
+
+#2.1
+
+```{r}
+# Filter the data to include only rows where the team is under AttackTeam
+attack_data <- Q2.df[Q2.df$Home == 0, ]
+
+# Calculate the total number of goals scored by each team when they are under AttackTeam
+team_goals <- tapply(attack_data$Goals, attack_data$AttackTeam, sum)
+
+# Calculate the total number of times each team appears under AttackTeam
+team_counts <- table(attack_data$AttackTeam)
+
+# Calculate the average number of goals scored by each team
+average_goals <- team_goals / team_counts
+
+# Create a new dataframe with team names and their average goals
+team_avg_goals <- data.frame(Team = names(average_goals), AverageGoals = average_goals)
+
+# Create the bar chart
+library(ggplot2)
+ggplot(data = team_avg_goals, aes(x = Team, y = AverageGoals.Freq)) +
+  geom_bar(stat = "identity", fill = "purple") +
+  labs(x = "Team", y = "Average Goals", title = "Average Number of Goals Scored by Each Team")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5))
+```
+#2.2
+
+
+```{r}
+# Load required libraries
+library(ggplot2)
+
+# Estimate Poisson model
+poisson_model <- glm(Goals ~ Home + as.factor(AttackTeam) + as.factor(DefendTeam), 
+                     data = Q2.df, family = poisson)
+
+# Predict expected goals scored and conceded for each team
+expected_goals <- predict(poisson_model, type = "response", newdata = Q2.df)
+
+# Create a new dataframe with team names, expected goals scored, and expected goals conceded
+team_expected_goals <- data.frame(Team = Q2.df$AttackTeam,
+                                  ExpectedGoalsScored = expected_goals,
+                                  ExpectedGoalsConceded = expected_goals)
+
+# Aggregate by team to get average expected goals scored and conceded
+team_avg_expected_goals <- aggregate(. ~ Team, data = team_expected_goals, mean)
+
+# Create scatter plot
+ggplot(data = team_avg_expected_goals, aes(x = ExpectedGoalsScored, y = ExpectedGoalsConceded, label = Team)) +
+  geom_point(size = 3, color = "blue") +
+  geom_text(vjust = -0.5, hjust = 0.5) +
+  labs(x = "Expected Goals Scored", y = "Expected Goals Conceded", 
+       title = "Expected Goals Scored vs Conceded for Each Team") +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 60, hjust = 1, vjust = 1))
+```
+#2.3
+
+```{r}
+# Define the teams
+Q2.teams <- c("A", "B", "C", "D")
+
+# Function to simulate a match outcome based on Poisson model parameters
+simulate_match <- function(home_team, away_team, home_attack, home_defense, away_attack, away_defense) {
+  # Simulate goals scored by home and away teams
+  home_goals <- rpois(1, lambda = exp(home_attack + away_defense))
+  away_goals <- rpois(1, lambda = exp(away_attack + home_defense))
+  
+  # Check for missing values
+  if (is.na(home_goals) || is.na(away_goals)) {
+    return(NA)  # Return NA if any goals are missing
+  }
+  
+  # Determine the winner
+  if (home_goals > away_goals) {
+    return(home_team)
+  } else if (home_goals < away_goals) {
+    return(away_team)
+  } else {
+    # If it's a draw, simulate penalty shootout (fair coin-toss)
+    if (runif(1) > 0.5) {
+      return(home_team)
+    } else {
+      return(away_team)
+    }
+  }
+}
+```
+
+```{r}
+# Function to simulate the knockout competition
+simulate_knockout <- function(home_teams, away_teams, home_attack, home_defense, away_attack, away_defense) {
+  # Semi-final matches
+  semi_finals <- list(c(home_teams[1], away_teams[1]), c(home_teams[2], away_teams[2]))
+  
+  # Simulate semi-finals
+  semi_finals_results <- lapply(semi_finals, function(match) {
+    simulate_match(match[1], match[2], home_attack[match[1]], home_defense[match[1]], away_attack[match[2]], away_defense[match[2]])
+  })
+  
+  # Check for missing values in semi-finals results
+  if (any(is.na(semi_finals_results))) {
+    return(NA)  # Return NA if any semi-final result is missing
+  }
+  
+  # Check for draw in semi-finals
+  if (semi_finals_results[[1]] == semi_finals_results[[2]]) {
+    # Play semi-finals again with other teams at home
+    semi_finals_results <- lapply(semi_finals, function(match) {
+      simulate_match(match[2], match[1], home_attack[match[2]], home_defense[match[2]], away_attack[match[1]], away_defense[match[1]])
+    })
+  }
+  
+  # Final match
+  final_result <- simulate_match(semi_finals_results[[1]], semi_finals_results[[2]], 
+                                 home_attack[semi_finals_results[[1]]], home_defense[semi_finals_results[[1]]], 
+                                 away_attack[semi_finals_results[[2]]], away_defense[semi_finals_results[[2]]])
+  
+  return(final_result)
+}
+```
+
+```{r}
+# Number of simulation trials
+#num_trials <- 10000
+
+# Empty vector to store tournament winners
+#tournament_winners <- character(num_trials)
+
+# Run simulations
+#for (i in 1:num_trials) {
+  #tournament_winners[i] <- simulate_knockout(c("A", "C"), c("B", "D"), 
+                                             #poisson_model$coefficients["Home"],
+                                            #poisson_model$coefficients[paste0("as.factor(AttackTeam)", Q2.teams)],
+                                             #poisson_model$coefficients[paste0("as.factor(DefendTeam)", Q2.teams)],
+                                             #poisson_model$coefficients[paste0("as.factor(DefendTeam)", Q2.teams)])
+#}
+
+#Calculate probabilities of each team winning
+#winning_probabilities <- table(tournament_winners) / num_trials
+
+# Print results
+#winning_probabilities
+```
+
+
+
+#Question 3
+
+```{r}
+# Load necessary packages
+#install.packages("mlogit")
+library(dplyr)
+library(tidyr)
+library(mlogit)
+```
+
+```{r}
+# Load the dataset Q3.df
+# Assuming the dataset is already loaded and named as Q3.df
+```
+
+#3.1
+```{r}
+# First, let's run the standard logit model for having children (Has.Children)
+model_has_children <- glm(Has.Children ~ log(income) + par.educ, data = Q3.df, family = binomial)
+
+# Now, let's run the logit model for having two or more children (Two.Or.More.Children)
+model_two_or_more_children <- glm(Two.Or.More.Children ~ log(income) + par.educ, data = Q3.df, family = binomial)
+
+# Display the estimated models
+summary(model_has_children)
+summary(model_two_or_more_children)
+```
+
+#3.2
+```{r}
+# Median income
+median_income <- median(Q3.df$income)
+
+# Probability of not having children for median income and neither has a college education
+prob_no_children <- 1-predict(model_has_children, newdata = data.frame(income = median_income, par.educ = "both.hs"), type = "response")
+prob_no_children
+```
+
+#3.3
+
+```{r}
+# Probability of having more than two children for median income and both parents college educated
+prob_more_than_two_children <- predict(model_two_or_more_children, newdata = data.frame(income = median_income, par.educ = "both.college"), type = "response")
+prob_more_than_two_children
+```
+
+#3.4
+```{r}
+# Probability of having zero, one, and two or more children for college-educated couple
+prob_zero_children <- predict(model_has_children, newdata = data.frame(income = median_income, par.educ = "both.college"), type = "response")
+prob_one_child <- 1 + prob_no_children - prob_zero_children
+prob_two_or_more_children <- prob_more_than_two_children
+
+# Display probabilities
+prob_zero_children
+prob_one_child
+prob_two_or_more_children
+```
+#3.5
+```{r}
+# Generate income values for illustration
+income_values <- seq(min(Q3.df$income), max(Q3.df$income), length.out = 100)
+
+# Predict mean number of children for Both.HS educated couple as a function of income
+mean_children <- exp(predict(model_has_children, newdata = data.frame(income = income_values, par.educ = "both.hs"), type = "link"))
+
+# Plot mean number of children as a function of income
+plot(income_values, mean_children, type = "l", xlab = "Household Income", ylab = "Mean Number of Children", main = "Mean Number of Children for Both.HS Educated Couple vs. Income")
+```
+
+
+#Question 4
+
+#4.1
+```{r}
+# Calculate the count and percentage of successful conversions for each distance to convert
+conversion_count <- tapply(Q4.df$converted, Q4.df$yds.conver, sum)
+conversion_percent <- conversion_count / table(Q4.df$yds.conver) * 100
+
+# Define color scale based on frequency
+color_scale <- rev(heat.colors(length(conversion_percent)))
+
+# Plotting the bar plot with colored bars
+barplot(conversion_percent, 
+        ylim = c(0, 100), 
+        col = color_scale, 
+        xlab = "Distance to Convert (yards)", 
+        ylab = "Percentage of Conversions (%)", 
+        main = "Conversion Frequency by Distance")
+
+# Adding grid lines
+grid()
+
+# Adding count labels
+text(x = barplot(conversion_percent, plot = FALSE), y = conversion_percent + 2, labels = conversion_count, col = "white", pos = 3)
+#Red means infrequent, white means more frequent 
+```
+
+#4.2
+
+```{r}
+# Loading the necessary package
+library("MASS")
+
+# Fitting the probit regression model
+probit_model <- glm(converted ~ yds.conver + yds.goal, data = Q4.df, family = binomial(link = "probit"))
+
+# Printing the summary of the model
+summary(probit_model)
+```
+#4.3
+
+#4.4 Using just the data you are given, construct an alternative model/predictor that has a better fit to the data (fixing the probit estimation method)
+
+```{r}
+# Fitting logistic regression model with interaction terms
+logistic_model <- glm(converted ~ yds.conver * yds.goal, data = Q4.df, family = binomial(link = "logit"))
+
+# Printing the summary of the model
+summary(logistic_model)
+```
+#4.5 Using your fitted model, generate a visualization that provides an easy guide for understanding how likely the conversion attempt will be using your model.
+
+```{r}
+# Generate predicted probabilities using the logistic regression model
+predicted_probabilities <- predict(logistic_model, type = "response", newdata = Q4.df)
+
+# Create a dataframe with distance to convert, current yardline, and predicted probabilities
+predictions_df <- data.frame(
+  yds.conver = Q4.df$yds.conver,
+  yds.goal = Q4.df$yds.goal,
+  predicted_probability = predicted_probabilities
+)
+
+# Plotting the predicted probabilities
+library("ggplot2")
+ggplot(predictions_df, aes(x = yds.conver, y = yds.goal, fill = predicted_probability)) +
+  geom_tile() +
+  scale_fill_gradient(low = "red", high = "green", name = "Predicted Probability") +
+  labs(x = "Distance to Convert (yards)", y = "Current Yardline", title = "Predicted Probability of Conversion") +
+  theme_minimal()
+```
+
+#Question 5
+
+```{r}
+# Load necessary libraries
+library(mlogit)
+```
+
+
+#5.1
+
+```{r}
+S <- dfidx(Q5.df, idx = c("id", "option"))
+```
+
+```{r}
+# Define the model formula
+formula <- Choice ~ price | sex + income
+```
+
+```{r}
+# Run the multinomial logit model
+mlogit.est <- mlogit(formula, S)
+```
+
+
+```{r}
+# Summarize the results
+summary(mlogit.est)
+```
+
+```{r}
+# Create a data frame with the hypothetical scenario
+hypothetical_data <- data.frame(
+  price = rep(30, nrow(S)),  # Price set to $30 for all choices
+  sex = "male",              # Male customer
+  income = 100000            # Income $100,000
+)
+```
+
+
+#5.2
+
+```{r}
+
+# Run the mixed logit model with the specified distribution for the random coefficients
+mixed_mlogit.est <- mlogit(Choice ~ price | sex + income, data = S, rpar = list(price = "n"))
+
+# Summarize the results
+summary(mixed_mlogit.est)
+```
+
+
+```{r}
+# Compare AIC values
+aic_standard <- AIC(mlogit.est)
+aic_mixed <- AIC(mixed_mlogit.est)
+
+# Print AIC values
+cat("AIC for Standard Multinomial Logit Model:", aic_standard, "\n")
+cat("AIC for Mixed Logit Model:", aic_mixed, "\n")
+
+# Determine which model has lower AIC
+if (aic_standard < aic_mixed) {
+  cat("Standard Multinomial Logit Model has a better fit according to AIC.\n")
+} else if (aic_standard > aic_mixed) {
+  cat("Mixed Logit Model has a better fit according to AIC.\n")
+} else {
+  cat("Both models have the same AIC value.\n")
+}
+```
+
+
+
+#5.3
+
+```{r}
+# Predict market shares using the mixed logit model
+market_shares <- predict(mixed_mlogit.est, newdata = S, type = "prob")
+
+# Get the number of brands (assuming number of unique choices in 'Choice' variable)
+n_brands <- ncol(market_shares)
+
+# Loop through brands and summarize market shares
+for (i in 1:n_brands) {
+  brand_name <- colnames(market_shares)[i]  # Get brand name from column name
+  market_share <- mean(market_shares[, i])  # Calculate average probability
+  cat(paste("Market Share for", brand_name, ":", round(market_share * 100, 2), "%", sep = " "))
+}
+```
+
+
+
+```{r}
+# Define the price reduction for Brand A
+price_reduction <- 2.5
+
+# Create a copy of the original data for the counterfactual scenario
+counterfactual_data <- S
+
+# Modify the price for Brand A (assuming the first option is Brand A)
+counterfactual_data$price[counterfactual_data$Choice == 1] <- 
+  counterfactual_data$price[counterfactual_data$Choice == 1] - price_reduction
+
+# Predict market shares under the counterfactual scenario
+counterfactual_shares <- predict(mixed_mlogit.est, newdata = counterfactual_data, type = "prob")
+
+# Calculate the difference in market shares for each brand
+market_share_diff <- counterfactual_shares - market_shares
+
+# Loop through brands and print the change in market share
+for (i in 1:n_brands) {
+  brand_name <- colnames(market_shares)[i]
+  diff <- round(mean(market_share_diff[, i]) * 100, 2)  # Calculate average difference
+  cat(paste("Change in Market Share for", brand_name, ":", diff, "%", sep = " "))
+}
+```
+
+
